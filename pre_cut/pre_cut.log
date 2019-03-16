@@ -1,0 +1,507 @@
+
+###############################################################
+# Input file for nanocutting of Cubic SiC with a diamond tool #
+# Chris Fung, June 2013                                       #
+# Input Variable:                                             #
+# rA    rake angle of diamond tool (in degree)                #
+###############################################################
+
+package cuda gpu/node 1 0
+package omp 2 force/neigh
+using multi-threaded neighbor list subroutines
+prefer double precision OpenMP force kernels
+
+# ------------------------ INITIALIZATION ----------------------------
+units 		metal
+dimension	3
+boundary	s	s	p
+atom_style	atomic
+
+variable a equal 4.3667  # lattice constant of 3C-SiC
+variable b equal 3.571   # lattice constant of diamond
+variable c equal $a/$b   # ratio of a and b
+variable c equal 4.3667/$b   
+variable c equal 4.3667/3.571   
+variable d equal 5.05016 # lattice spacing of diamond in 110 direction
+variable e equal $a/$d # lattice spacing of diamond in 110 direction
+variable e equal 4.3667/$d 
+variable e equal 4.3667/5.05016 
+variable f equal $b/$d
+variable f equal 3.571/$d
+variable f equal 3.571/5.05016
+variable dx equal 70*$e  # datum position x of tool region
+variable dx equal 70*0.864665673958845  
+variable dy equal 5*$c   # datum position y of tool region
+variable dy equal 5*1.22282273872865   
+variable lx equal 31     # x dimension of tool region
+variable ly equal 31     # y dimension of tool region
+variable dx1 equal ${dx}+${lx}   # xhi of tool region
+variable dx1 equal 60.5265971771192+${lx}   
+variable dx1 equal 60.5265971771192+31   
+variable dy1 equal ${dy}+${ly}   # yhi of tool region
+variable dy1 equal 6.11411369364325+${ly}   
+variable dy1 equal 6.11411369364325+31   
+variable lr equal 4      # tool edge radius
+variable lrf equal 4*$f      # tool edge radius
+variable lrf equal 4*0.707106309503065      
+variable rx equal ${dx}+${lrf} # x-coordinate of the centre of edge radius
+variable rx equal 60.5265971771192+${lrf} 
+variable rx equal 60.5265971771192+2.82842523801226 
+variable ry equal ${dy}+${lr}                           # y-coordinate of the centre of edge radius
+variable ry equal 6.11411369364325+${lr}                           
+variable ry equal 6.11411369364325+4                           
+variable rakeangle equal ${rA}/180*PI   # degree of rake angle / 180 * PI
+variable rakeangle equal 15/180*PI   
+variable rkshiftX equal -${ly}*$f*tan(${rakeangle})   # x offset for tiling
+variable rkshiftX equal -31*$f*tan(${rakeangle})   
+variable rkshiftX equal -31*0.707106309503065*tan(${rakeangle})   
+variable rkshiftX equal -31*0.707106309503065*tan(0.261799387799149)   
+variable frx equal ${rx}-${lrf}*cos(${rakeangle})
+variable frx equal 63.3550224151315-${lrf}*cos(${rakeangle})
+variable frx equal 63.3550224151315-2.82842523801226*cos(${rakeangle})
+variable frx equal 63.3550224151315-2.82842523801226*cos(0.261799387799149)
+variable fry equal ${ry}-${lr}*sin(${rakeangle})
+variable fry equal 10.1141136936433-${lr}*sin(${rakeangle})
+variable fry equal 10.1141136936433-4*sin(${rakeangle})
+variable fry equal 10.1141136936433-4*sin(0.261799387799149)
+variable clearangle equal 10/180*PI  # degree of clearance angle / 180 * PI
+variable fcx1 equal ${rx}+${lr}*$f*sin(${clearangle})  # xlo of trimfc for clearance face
+variable fcx1 equal 63.3550224151315+${lr}*$f*sin(${clearangle})  
+variable fcx1 equal 63.3550224151315+4*$f*sin(${clearangle})  
+variable fcx1 equal 63.3550224151315+4*0.707106309503065*sin(${clearangle})  
+variable fcx1 equal 63.3550224151315+4*0.707106309503065*sin(0.174532925199433)  
+variable fcx2 equal ${fcx1}+${lx}                    # xhi of trimfc
+variable fcx2 equal 63.8461733033795+${lx}                    
+variable fcx2 equal 63.8461733033795+31                    
+variable fcy1 equal ${ry}-${lr}*cos(${clearangle})  # ylo of trimfc
+variable fcy1 equal 10.1141136936433-${lr}*cos(${clearangle})  
+variable fcy1 equal 10.1141136936433-4*cos(${clearangle})  
+variable fcy1 equal 10.1141136936433-4*cos(0.174532925199433)  
+variable fcy2 equal ${fcy1}+${lx}/$f*tan(${clearangle}) # yhi of trimfc
+variable fcy2 equal 6.17488268159447+${lx}/$f*tan(${clearangle}) 
+variable fcy2 equal 6.17488268159447+31/$f*tan(${clearangle}) 
+variable fcy2 equal 6.17488268159447+31/0.707106309503065*tan(${clearangle}) 
+variable fcy2 equal 6.17488268159447+31/0.707106309503065*tan(0.174532925199433) 
+variable bx1 equal ${dx1}-1                        # xlo of fixed boundary of tool region
+variable bx1 equal 91.5265971771192-1                        
+variable bx2 equal ${bx1}-3                        # xlo of thermostatic boundary of tool region
+variable bx2 equal 90.5265971771192-3                        
+variable by1 equal ${dy1}-1                        # ylo of fixed boundary of tool region
+variable by1 equal 37.1141136936432-1                        
+variable by2 equal ${by1}-3                        # ylo of thermostatic boundary of tool region
+variable by2 equal 36.1141136936432-3                        
+
+variable wh equal 10     # height of workpiece region
+variable doc equal ${wh}-${dy}
+variable doc equal 10-${dy}
+variable doc equal 10-6.11411369364325
+
+lattice fcc $a
+lattice fcc 4.3667
+Lattice spacing in x,y,z = 4.3667 4.3667 4.3667
+region		whole block 0 99 0 47 0 7
+create_box	3 whole
+Created orthogonal box = (0 0 0) to (432.303 205.235 30.5669)
+  1 by 1 by 1 MPI processor grid
+
+# ----------------------- ATOM DEFINITION ----------------------------
+
+# create C atoms for diamond tool
+lattice diamond $b orient x 1 0 1 orient y 0 1 0 orient z -1 0 1 origin 0 0 0.4
+lattice diamond 3.571 orient x 1 0 1 orient y 0 1 0 orient z -1 0 1 origin 0 0 0.4
+Lattice spacing in x,y,z = 5.05016 3.571 5.05016
+
+# define the shape, dimension, and initial position of cutting tool
+region cut_toolB block ${frx} ${dx1} ${dy} ${dy1} INF INF
+region cut_toolB block 60.6229734300077 ${dx1} ${dy} ${dy1} INF INF
+region cut_toolB block 60.6229734300077 91.5265971771192 ${dy} ${dy1} INF INF
+region cut_toolB block 60.6229734300077 91.5265971771192 6.11411369364325 ${dy1} INF INF
+region cut_toolB block 60.6229734300077 91.5265971771192 6.11411369364325 37.1141136936432 INF INF
+region rakeface prism ${frx} ${dx1} ${fry} ${dy1} INF INF  ${rkshiftX} 0 0
+region rakeface prism 60.6229734300077 ${dx1} ${fry} ${dy1} INF INF  ${rkshiftX} 0 0
+region rakeface prism 60.6229734300077 91.5265971771192 ${fry} ${dy1} INF INF  ${rkshiftX} 0 0
+region rakeface prism 60.6229734300077 91.5265971771192 9.07883751323322 ${dy1} INF INF  ${rkshiftX} 0 0
+region rakeface prism 60.6229734300077 91.5265971771192 9.07883751323322 37.1141136936432 INF INF  ${rkshiftX} 0 0
+region rakeface prism 60.6229734300077 91.5265971771192 9.07883751323322 37.1141136936432 INF INF  -5.87352550242322 0 0
+region cut_toolR cylinder z ${rx} ${ry}  ${lrf} INF INF
+region cut_toolR cylinder z 63.3550224151315 ${ry}  ${lrf} INF INF
+region cut_toolR cylinder z 63.3550224151315 10.1141136936433  ${lrf} INF INF
+region cut_toolR cylinder z 63.3550224151315 10.1141136936433  2.82842523801226 INF INF
+region trimboxfr block EDGE ${rx} EDGE ${fry} INF INF side out
+region trimboxfr block EDGE 63.3550224151315 EDGE ${fry} INF INF side out
+region trimboxfr block EDGE 63.3550224151315 EDGE 9.07883751323322 INF INF side out
+region trimboxfc block ${rx} EDGE EDGE ${fcy1} INF INF side out
+region trimboxfc block 63.3550224151315 EDGE EDGE ${fcy1} INF INF side out
+region trimboxfc block 63.3550224151315 EDGE EDGE 6.17488268159447 INF INF side out
+region cut_toolBR union 2 cut_toolB rakeface
+region cut_toolTr intersect 3 cut_toolBR trimboxfr trimboxfc
+region cut_tool union 2 cut_toolTr cut_toolR
+
+region trimfc prism ${fcx1} ${fcx2} ${fcy1} ${fcy2} INF INF ${lx} 0 0
+region trimfc prism 63.8461733033795 ${fcx2} ${fcy1} ${fcy2} INF INF ${lx} 0 0
+region trimfc prism 63.8461733033795 94.8461733033795 ${fcy1} ${fcy2} INF INF ${lx} 0 0
+region trimfc prism 63.8461733033795 94.8461733033795 6.17488268159447 ${fcy2} INF INF ${lx} 0 0
+region trimfc prism 63.8461733033795 94.8461733033795 6.17488268159447 13.9051720716069 INF INF ${lx} 0 0
+region trimfc prism 63.8461733033795 94.8461733033795 6.17488268159447 13.9051720716069 INF INF 31 0 0
+
+#define boundaries of cutting tool
+region ctTop block ${dx} ${dx1} ${by1} ${dy1} INF INF
+region ctTop block 60.5265971771192 ${dx1} ${by1} ${dy1} INF INF
+region ctTop block 60.5265971771192 91.5265971771192 ${by1} ${dy1} INF INF
+region ctTop block 60.5265971771192 91.5265971771192 36.1141136936432 ${dy1} INF INF
+region ctTop block 60.5265971771192 91.5265971771192 36.1141136936432 37.1141136936432 INF INF
+region ctxEnd block ${bx1} ${dx1} ${dy} ${dy1} INF INF
+region ctxEnd block 90.5265971771192 ${dx1} ${dy} ${dy1} INF INF
+region ctxEnd block 90.5265971771192 91.5265971771192 ${dy} ${dy1} INF INF
+region ctxEnd block 90.5265971771192 91.5265971771192 6.11411369364325 ${dy1} INF INF
+region ctxEnd block 90.5265971771192 91.5265971771192 6.11411369364325 37.1141136936432 INF INF
+region ctTSbottom block ${dx} ${bx1} ${by2} ${by1} INF INF
+region ctTSbottom block 60.5265971771192 ${bx1} ${by2} ${by1} INF INF
+region ctTSbottom block 60.5265971771192 90.5265971771192 ${by2} ${by1} INF INF
+region ctTSbottom block 60.5265971771192 90.5265971771192 33.1141136936432 ${by1} INF INF
+region ctTSbottom block 60.5265971771192 90.5265971771192 33.1141136936432 36.1141136936432 INF INF
+region ctTSxEnd block ${bx2} ${bx1} ${dy} ${by1} INF INF
+region ctTSxEnd block 87.5265971771192 ${bx1} ${dy} ${by1} INF INF
+region ctTSxEnd block 87.5265971771192 90.5265971771192 ${dy} ${by1} INF INF
+region ctTSxEnd block 87.5265971771192 90.5265971771192 6.11411369364325 ${by1} INF INF
+region ctTSxEnd block 87.5265971771192 90.5265971771192 6.11411369364325 36.1141136936432 INF INF
+region ctbound union 2 ctTop ctxEnd
+region ctTSbound union 2 ctTSbottom ctTSxEnd
+
+# create C atoms of diamond tool and make a nano-groove on the flank face
+create_atoms 1 region cut_tool
+Created 82116 atoms
+
+
+delete_atoms region trimfc
+Deleted 5808 atoms, new total = 76308
+
+
+group gpCTall region  cut_tool
+76308 atoms in group gpCTall
+group gpCTbd  region  ctbound
+2400 atoms in group gpCTbd
+group gpCTtsbd  region  ctTSbound
+7200 atoms in group gpCTtsbd
+group gpCTmob subtract gpCTall gpCTbd gpCTtsbd
+66708 atoms in group gpCTmob
+
+
+
+print "diamond tool created"
+diamond tool created
+#------------------------------------------------------------
+
+# define the lattice of cubic SiC (two atom types form two interpenetrating face-centered cubic lattices)
+
+# define the shape and dimension of the workpiece
+lattice fcc 4.3667 origin 0 0 0 orient x 1 0 0 orient y 0 1 0
+Lattice spacing in x,y,z = 4.3667 4.3667 4.3667
+
+# define the boundaries for workpiece
+region workpiece block 0 65 0 ${wh} INF INF
+region workpiece block 0 65 0 10 INF INF
+region wpbottom block 0 65 0 1 INF INF
+region wpxEnd block 0 1 0 ${wh} INF INF
+region wpxEnd block 0 1 0 10 INF INF
+region wpTSbottom block 1 65 1 2 INF INF
+region wpTSxEnd block 1 2 1 ${wh} INF INF
+region wpTSxEnd block 1 2 1 10 INF INF
+region wpbound union 2 wpbottom wpxEnd
+region wpTSbound union 2 wpTSbottom wpTSxEnd
+
+# create Si atoms for SiC workpiece
+create_atoms	2 region workpiece
+Created 19257 atoms
+
+# offset origin for 1/4 unit cell for C atoms
+lattice fcc 4.3667 origin 0.25 0.25 0.25 orient x 1 0 0 orient y 0 1 0
+Lattice spacing in x,y,z = 4.3667 4.3667 4.3667
+create_atoms	3 region workpiece
+Created 18200 atoms
+
+
+# groups atoms
+group gpWPall region workpiece
+37457 atoms in group gpWPall
+group gpWPbd region wpbound
+5201 atoms in group gpWPbd
+group gpWPtsbd region wpTSbound
+5061 atoms in group gpWPtsbd
+group gpWPmob subtract gpWPall gpWPbd gpWPtsbd
+28224 atoms in group gpWPmob
+
+
+
+
+print "Workpiece created"
+Workpiece created
+
+#-------------------------------------------------
+
+
+# define the mass of atoms
+mass 1 12 #.0107 # C (g/mol)
+mass 2 28 #.0855 # Si (g/mol)
+mass 3 12 #.0107 # C (g/mol)
+
+#group Si type 2
+#group C type 1 3
+
+lattice fcc 4.3667 origin 0 0 0
+Lattice spacing in x,y,z = 4.3667 4.3667 4.3667
+
+
+# ------------------------ FORCE FIELDS ------------------------------
+
+#pair_style	atomistica Tersoff
+#pair_coeff	* *  C Si C
+
+pair_style	tersoff
+
+pair_coeff	* * ../../potentials/SiC_Erhart-Albe.tersoff C Si C
+
+# ------------------------- SETTINGS ---------------------------------
+######################################
+# EQUILIBRATION
+
+# set temperature at 300 K
+compute myCTtemp gpCTmob temp
+compute myWPtemp gpWPmob temp
+velocity all create 300 102456 dist uniform
+
+fix 1 gpWPall nvt temp 300.0 300.0 0.05 #iso 1.0 1.0 0.5
+fix 2 gpCTall nvt temp 300.0 300.0 0.05 #iso 1.0 1.0 0.5
+
+reset_timestep	0
+timestep 0.0005 # set 1 femtosecond per step
+
+fix 3 gpWPbd move linear 0 0 0
+fix 4 gpCTbd move linear 0 0 0
+
+fix 10 all balance 100  0.9 shift xy 10 1.05 out pre_cut/tmp.balance.log
+fix 13 all property/atom mol
+
+set group gpCTmob mol 1
+  66708 settings made for mol
+set group gpCTtsbd mol 2
+  7200 settings made for mol
+set group gpCTbd mol 3
+  2400 settings made for mol
+
+set group gpWPmob mol 4
+  28224 settings made for mol
+set group gpWPtsbd mol 5
+  5061 settings made for mol
+set group gpWPbd mol 6
+  5201 settings made for mol
+
+
+# Display thermo
+
+thermo 	100
+#compute		eCSP all centro/atom fcc
+#compute atomke all ke/atom
+dump	 e0dumpCSP all custom 1000 pre_cut/dump.cutsic_eq.${doc}.*.lammpstrj id type mol element x y z vx vy vz # c_atomke
+dump	 e0dumpCSP all custom 1000 pre_cut/dump.cutsic_eq.3.88588630635675.*.lammpstrj id type mol element x y z vx vy vz 
+dump_modify e0dumpCSP element C Si C
+
+# backup initial state and every 1000 steps
+write_restart pre_cut/cut_sic_eq.restart.0000
+No /omp style for force computation currently active
+WARNING: One or more atoms are time integrated more than once (../modify_cuda.cpp:225)
+restart 1000 pre_cut/cut_sic_eq.restart
+
+
+
+# Run for at least 10 picosecond
+print "start run equilibration"
+start run equilibration
+
+
+run 10000
+No /omp style for force computation currently active
+WARNING: One or more atoms are time integrated more than once (../modify_cuda.cpp:225)
+Memory usage per processor = 61.9464 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+       0          300   -787919.38            0   -783507.84   -13886.253    1744760.4 
+WARNING: # CUDA: You asked for a Verlet integration using Cuda, but several fixes have not yet been ported to Cuda.
+This can cause a severe speed penalty due to frequent data synchronization between host and GPU. (../verlet_cuda.cpp:629)
+     100    220.01686   -786873.28            0    -783637.9   -8458.6482    1749019.9 
+     200    234.72435   -786820.06            0    -783368.4   -8131.9914    1750930.7 
+     300    258.33044    -786876.7            0   -783077.92   -6262.8451    1751148.9 
+     400    271.33116   -786761.99            0   -782772.02   -4306.4271    1751003.1 
+     500     256.7391   -786258.92            0   -782483.53   -3096.6369    1753825.1 
+     600    264.34971   -786083.54            0   -782196.23   -715.05986    1755392.7 
+     700    284.56187   -786128.54            0   -781944.01    -75.08724    1754487.4 
+     800    318.73512   -786421.17            0   -781734.12    411.67256    1753614.8 
+     900    310.05467   -786128.79            0   -781569.39    113.78854    1753446.3 
+    1000    299.75396   -785912.51            0   -781504.58    117.60643    1753576.3 
+    1100    297.36416   -785876.71            0   -781503.92    -682.2211    1754276.2 
+    1200    302.99875   -786055.41            0   -781599.76   -1225.2229    1751396.5 
+    1300    294.66461   -786000.34            0   -781667.25   -2684.8691    1750995.4 
+    1400    294.74134   -786027.96            0   -781693.74   -3231.8735    1750571.3 
+    1500    307.22609   -786245.98            0   -781728.17   -5015.4543    1751659.5 
+    1600    301.90564   -786178.81            0   -781739.24   -6673.4617    1751273.1 
+    1700     293.3681   -786067.48            0   -781753.46    -7252.787    1751421.6 
+    1800    299.04475   -786152.14            0   -781754.64   -8553.2092    1751563.7 
+    1900    314.96675   -786398.83            0    -781767.2   -10031.999    1751504.8 
+    2000     295.4119   -786138.84            0   -781794.77   -10802.169    1750910.7 
+    2100    298.12204   -786152.55            0   -781768.62   -11777.511    1750898.3 
+    2200    296.66103   -786091.95            0   -781729.51   -12453.036    1750725.2 
+    2300    302.34658   -786139.06            0   -781693.01   -12629.216    1750709.8 
+    2400    307.95976    -786211.8            0   -781683.21   -12279.473    1750601.9 
+    2500    301.16993   -786137.61            0   -781708.86   -12260.586    1750145.1 
+    2600     305.6675   -786206.63            0   -781711.74   -12106.048    1749976.7 
+    2700    290.72831   -785986.89            0   -781711.68   -11753.619    1749802.1 
+    2800     297.0448   -786063.85            0   -781695.76   -11910.278    1749535.4 
+    2900    307.57458   -786203.76            0   -781680.83   -12024.771    1749574.3 
+    3000    303.69562   -786177.26            0   -781711.37   -11319.577    1749578.7 
+    3100    300.65353   -786166.22            0   -781745.07   -10977.054    1749392.4 
+    3200    301.05586   -786200.45            0   -781773.38   -11126.012    1748816.7 
+    3300    296.50846    -786129.1            0    -781768.9   -10521.562    1749197.8 
+    3400     295.8256    -786105.9            0   -781755.74   -9821.8584    1749398.9 
+    3500    301.02713   -786172.53            0   -781745.88   -9307.5935    1749258.6 
+    3600     307.2182   -786261.76            0   -781744.07   -8584.4514    1749761.8 
+    3700    301.19117   -786201.57            0   -781772.51   -8681.1117    1749247.6 
+    3800     297.3211   -786172.26            0   -781800.11   -8866.7481    1748933.6 
+    3900    304.68843   -786283.91            0   -781803.42   -9361.8089    1748610.4 
+    4000    295.97379   -786135.17            0   -781782.83   -9549.6247    1748643.5 
+    4100    299.90964   -786155.54            0   -781745.32   -10029.127    1748428.7 
+    4200    302.39356   -786182.44            0    -781735.7   -10363.693    1748353.4 
+    4300    304.05755   -786226.03            0   -781754.81    -10442.24    1747058.1 
+    4400    295.42025   -786118.71            0   -781774.51   -10451.216    1749796.3 
+    4500    295.66772   -786124.43            0   -781776.59   -11354.815    1752063.2 
+    4600    303.81793   -786196.72            0   -781729.03   -11508.273    1753505.1 
+    4700    299.11592   -786086.92            0   -781688.38   -11556.046    1754857.6 
+    4800    297.85933   -786059.23            0   -781679.16   -11971.371    1755386.3 
+    4900    301.18758   -786127.17            0   -781698.16   -12058.795    1755586.9 
+    5000    301.34158   -786157.66            0   -781726.39   -12457.252    1755858.9 
+    5100    296.15729   -786078.36            0   -781723.32   -12050.669    1757234.5 
+    5200    304.28401   -786173.84            0    -781699.3   -11106.786    1756490.1 
+    5300    302.96207   -786161.14            0   -781706.03   -9795.9036    1756261.9 
+    5400    300.37452   -786163.59            0   -781746.53   -8570.0421    1755460.5 
+    5500    295.63014    -786151.6            0   -781804.32   -7410.0802    1755751.1 
+    5600    304.83414   -786319.88            0   -781837.24   -6426.4705    1754507.3 
+    5700    300.97254   -786265.42            0   -781839.58   -5589.6376    1754289.7 
+    5800    295.36746    -786155.2            0   -781811.78    -4680.793    1754462.1 
+    5900    299.44645   -786178.07            0   -781774.67    -3807.202    1754110.8 
+    6000    298.59383   -786164.49            0   -781773.62   -3265.3967    1755174.4 
+    6100     300.6185   -786212.78            0   -781792.14   -2710.4739    1756349.1 
+    6200    297.94215    -786194.3            0   -781813.01   -1948.6634      1756690 
+    6300    306.75795    -786315.5            0   -781804.57   -1593.2109    1756877.1 
+    6400    301.88881   -786204.85            0   -781765.53   -964.22409      1756734 
+    6500    294.00114   -786047.61            0   -781724.28    -709.7393    1757136.6 
+    6600    301.55956    -786134.8            0   -781700.32   -1532.4377    1757227.4 
+    6700    305.55105   -786217.49            0   -781724.32    -2861.335    1758829.3 
+    6800    303.31928   -786228.16            0    -781767.8   -4445.9474    1757929.4 
+    6900    298.84052   -786183.63            0   -781789.13   -5674.2919    1758405.2 
+    7000     300.3647   -786204.52            0   -781787.61    -6894.571    1756685.9 
+    7100    298.52692   -786179.65            0   -781789.77   -8051.0766    1756565.9 
+    7200    297.66734    -786196.1            0   -781818.86   -9256.2635    1754828.5 
+    7300     298.4547   -786237.13            0   -781848.31    -10694.96      1753508 
+    7400    306.25987   -786342.74            0   -781839.14   -11983.139    1751970.8 
+    7500    297.35453   -786170.72            0   -781798.08   -13041.377    1750587.3 
+    7600    296.59035   -786087.04            0   -781725.63   -14115.617    1749159.6 
+    7700    299.65433   -786073.01            0   -781666.55   -15320.136    1747751.7 
+    7800    299.45154   -786029.22            0   -781625.74    -16415.54    1747461.5 
+    7900    303.28727   -786042.73            0   -781582.85   -17220.813      1746663 
+    8000    300.44739   -785970.51            0   -781552.38   -17418.876    1746505.3 
+    8100    304.43634   -786003.05            0   -781526.27   -17395.554    1746452.6 
+    8200    295.96219      -785895            0   -781542.83   -16869.191    1746853.1 
+    8300    297.05247   -785955.12            0   -781586.92     -16416.4      1747195 
+    8400    302.48669   -786074.17            0   -781626.06   -15875.218    1747263.6 
+    8500    302.08891   -786124.77            0   -781682.51   -15414.007    1746757.7 
+    8600    300.57756   -786149.93            0   -781729.89    -14772.23    1746794.2 
+    8700    302.13798   -786219.89            0   -781776.91   -14159.398    1747109.2 
+    8800    297.78214   -786195.17            0   -781816.24    -12702.18    1747048.1 
+    8900    296.90724   -786215.76            0   -781849.69   -11345.692    1747265.2 
+    9000    300.84198   -786313.38            0   -781889.45   -10051.858      1747485 
+    9100    305.49241   -786399.78            0   -781907.47   -8481.9955      1749011 
+    9200    299.69231   -786322.26            0   -781915.24   -6978.9868    1748431.7 
+    9300    297.66657   -786288.07            0   -781910.84   -5642.9374    1749348.9 
+    9400    301.80229   -786320.99            0   -781882.94   -4467.5742    1749137.1 
+    9500     296.0658   -786212.93            0   -781859.24   -3978.9392    1749125.8 
+    9600    300.10194   -786237.13            0   -781824.08   -3554.4915      1749278 
+    9700    300.81987   -786226.56            0   -781802.96   -3363.3096    1749475.7 
+    9800    299.31552   -786192.97            0   -781791.49   -3283.4185    1749473.3 
+    9900    297.01195   -786127.16            0   -781759.55   -3375.0898    1750044.6 
+   10000    296.55078   -786098.16            0   -781737.34   -3409.3817      1750679 
+Loop time of 1958.41 on 1 procs for 10000 steps with 113765 atoms
+
+Pair  time (%) = 449.754 (22.9652)
+Neigh time (%) = 8.91508 (0.45522)
+Comm  time (%) = 13.4638 (0.687483)
+Outpt time (%) = 6.73881 (0.344096)
+Other time (%) = 1479.54 (75.548)
+
+Nlocal:    113765 ave 113765 max 113765 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    73975 ave 73975 max 73975 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    0 ave 0 max 0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  8.01448e+06 ave 8.01448e+06 max 8.01448e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 8014484
+Ave neighs/atom = 70.4477
+Neighbor list builds = 102
+Dangerous builds = 0
+
+unfix 1
+unfix 2
+unfix 3
+unfix 4
+print "Complete equilibration process"
+Complete equilibration process
+
+#uncompute eCSP
+#undump e0dumpCSP
+
+######################################
+# DEFORMATION
+
+# move the tool to closer
+
+#displace_atoms gpCTall move -4.9 0 0
+
+reset_timestep	0
+timestep 0.001
+
+# rescale the temperature of thermostatic boundaries to 300 K
+
+fix 1 all nve
+
+fix 3 gpWPbd move linear 0 0 0
+fix 4 gpCTbd move linear 0 0 0
+
+
+# Output strain and stress info to file
+# for units metal, pressure is in [bars] = 100 [kPa] = 1/10000 [GPa]
+# p2, p3, p4 are in GPa
+
+## Use cfg for AtomEye
+#dump 		1 all cfg 2000 pre_cut/dump.cutsic_*.cfg id type xs ys zs c_csym
+
+
+# Display thermo
+#thermo 100
+#compute atomdisp  all displace/atom
+#compute atomstres all stress/atom
+dump	 0dumpCSP all custom 100 pre_cut/dump.cutsic.${doc}.lammpstrj id type mol element x y z vx vy vz #c_atomdisp[4] c_atomstres[1] c_atomstres[2] c_atomstres[3] c_atomstres[4] c_atomstres[5] c_atomstres[6]
+dump	 0dumpCSP all custom 100 pre_cut/dump.cutsic.3.88588630635675.lammpstrj id type mol element x y z vx vy vz 
+dump_modify 0dumpCSP element C Si C
+
+#write_restart pre_cut/cut_sic.restart.0000
+restart 1000 pre_cut/cut_sic.restart
+#run		0
+
+
+######################################
+# SIMULATION DONE
+print "All done"
+All done
+shell echo "Cutting simulation has completed -- cut_sic_eq" | mail -s "LAMMPS - simulation done" chris-fung1125@hotmail.com
+shell curl -u v1xLeCC9qPNypWqVabP5ydNPIv94Kuo9guujz7K8nZUaq: https://api.pushbullet.com/v2/pushes -d type=note -d device_iden="ujz7K8nZUaqsjAgWOzmngO" -d title="Push from KhrisU" -d body="LAMMPS -- Simulation is finish"
+
